@@ -75,7 +75,8 @@ def _reproject_points(x_src, y_src, src_srs, dst_srs):
     - > reproject(-51.0011529236, 81.0608809732, 32622, 4326)
       > 499980.0, 9000000.0
     """
-    x_dst, y_dst = pyproj.transform(src_srs, dst_srs, x_src, y_src)
+    transformer = pyproj.Transformer.from_crs(src_srs, dst_srs)
+    x_dst, y_dst = transformer.transform(x_src, y_src)
     return x_dst, y_dst
 
 
@@ -141,8 +142,8 @@ def get_nwp_at_latlon_ts(fname_nwp,
     ycoords_req = lat_req
     xcoords, ycoords = \
         _reproject_points(xcoords_req, ycoords_req, \
-                          pyproj.Proj(init="epsg:4326"), \
-                          pyproj.Proj(projection_string))
+                          "epsg:4326", \
+                          projection_string)
     
     # compute corresponding index in NWP grid
     xidx = [ _coords_to_index(xcoords[kk], xvec) for kk in range(len(xcoords)) ]
