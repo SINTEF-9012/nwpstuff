@@ -97,7 +97,8 @@ def _coords_to_index(coord, xc):
 def get_nwp_at_latlon_ts(fname_nwp, 
                          lon_req=[10.5,10.6],
                          lat_req=[59.5,59.6],
-                         ts_req='2019-01-01T000000Z'):
+                         ts_req='2019-01-01T000000Z',
+                         as_dataframe=True):
     """
     fname_nwp is the path to the NWP product
     lon_req, lat_req are in WGS84 (EPSG:4326)
@@ -144,10 +145,12 @@ def get_nwp_at_latlon_ts(fname_nwp,
     nwp_dict = { 'ts': pd.to_datetime(ts_req, utc=True), 
                  'lon_out': lon_out, 'lat_out': lat_out,
                  'hs_sea': hs_sea }
-    df = pd.DataFrame(data=nwp_dict)
 
-    # return
-    return df
+    if as_dataframe == True:
+        out = pd.DataFrame(data=nwp_dict)
+    else:
+        out = nwp_dict
+    return out
 
 
 if __name__ == "__main__":
@@ -171,7 +174,8 @@ if __name__ == "__main__":
     df = get_nwp_at_latlon_ts(fname_nwp, 
                               lon_req=[lon_req],
                               lat_req=[lat_req],
-                              ts_req="%sT000000Z" % args.date)
+                              ts_req="%sT000000Z" % args.date,
+                              as_dataframe=True)
 
     print("[*] Output Dataframe Follows")
     print(df)
