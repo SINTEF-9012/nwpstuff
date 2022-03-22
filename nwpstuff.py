@@ -1,6 +1,5 @@
 """
-Stuff to interact with NWP products from MetNo.
-MEPS/AROME currently unsupported.
+Stuff to interact with `MyWaveWam` NWP products from MetNo.
 """
 
 import netCDF4 as nc
@@ -98,13 +97,11 @@ def _coords_to_index(coord, xc):
 def get_nwp_at_latlon_ts(fname_nwp, 
                          lon_req=[10.5,10.6],
                          lat_req=[59.5,59.6],
-                         ts_req='2019-01-01T000000Z',
-                         product='mywavewam'):
+                         ts_req='2019-01-01T000000Z'):
     """
     fname_nwp is the path to the NWP product
     lon_req, lat_req are in WGS84 (EPSG:4326)
     ts is ISO 8601 (e.g., 2019-09-06T134500Z is valid)
-    product can be `arome`, `meps`, or `mywavewam`
     @todo: arome/meps
     """
     
@@ -155,10 +152,6 @@ def get_nwp_at_latlon_ts(fname_nwp,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    group = parser.add_mutually_exclusive_group(required=True)
-    # group.add_argument('--arome', action='store_true', help='AROME NWP')
-    # group.add_argument('--meps', action='store_true', help='MEPS NWP')
-    group.add_argument('--mywavewam', action='store_true', help='MyWaveWam')
     parser.add_argument('-d', '--date', default='2019-01-01', 
                         help='Date for NWP Data')
     parser.add_argument('-b', '--basedir', default='/tmp',
@@ -178,8 +171,7 @@ if __name__ == "__main__":
     df = get_nwp_at_latlon_ts(fname_nwp, 
                               lon_req=[lon_req],
                               lat_req=[lat_req],
-                              ts_req="%sT000000Z" % args.date,
-                              product='mywavewam')
+                              ts_req="%sT000000Z" % args.date)
 
     print("[*] Output Dataframe Follows")
     print(df)
