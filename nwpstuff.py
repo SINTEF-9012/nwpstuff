@@ -78,22 +78,6 @@ def _load_nwp_grid(fname):
     return longitude, latitude
 
 
-def _coords_to_index(coord, xc):
-    """
-    given a coordinate and a grid, find index of the grid cell the coord is in.
-    `coord` is the coordinate and `xc` the grid centerpoints.
-    for example, looking for `coord = 0.32` in `xc = [ 0.1, 0.2, 0.3, 0.4]`
-    will yield and `xidx = 2`. we assume that xc is evenly spaced.
-    """
-    dx = np.diff(xc)[0] # assume even spacing
-    xl = xc - dx/2.0    # left edges
-    xr = xc + dx/2.0    # right edges
-    # https://stackoverflow.com/q/36941294
-    #xidx = xc[np.logical_and(coord>xl, coord<xr)][0]
-    xidx, = np.where(np.logical_and(coord>xl, coord<xr))[0]
-    return xidx
-
-
 def get_nwp_at_latlon_ts(fname_nwp, 
                          lon_req=[10.5,10.6],
                          lat_req=[59.5,59.6],
