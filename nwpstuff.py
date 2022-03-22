@@ -16,6 +16,10 @@ def download_nwp(date, basedir, force=False):
     date is YYYY-MM-DD
     basedir is the path where the NWP output will be stored
     force will re-download the file even if it exists
+
+    cf. https://thredds.met.no/thredds/fou-hi/mywavewam800.html
+    we use MyWaveWam800m Skagerrak Hourly Aggregation
+    then click `NetcdfSubset`
     """
     date = date.split('-')
     year = int(date[0])
