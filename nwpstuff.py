@@ -7,8 +7,8 @@ import netCDF4 as nc
 import pandas as pd
 import numpy as np
 import subprocess
+import pyresample
 import argparse
-import pyproj
 import os
 
 
@@ -66,42 +66,17 @@ def download_nwp(date, basedir, force=False):
     return fname
 
 
-def _reproject_points(x_src, y_src, src_srs, dst_srs):
-    """
-    Reproject (x_src,y_src) in srs_src to (x_dst,y_dst) in srs_dst.
-    x_src,y_src,x_dst,y_dst can be numpy arrays.
-    - > reproject(499980.0, 9000000.0, 32622, 4326)
-      > -51.0011529236 81.0608809732
-    - > reproject(-51.0011529236, 81.0608809732, 32622, 4326)
-      > 499980.0, 9000000.0
-    """
-    transformer = pyproj.Transformer.from_crs(src_srs, dst_srs)
-    x_dst, y_dst = transformer.transform(x_src, y_src)
-    return x_dst, y_dst
-
-
-def _load_nwp_grid(fname, product='mywavewam'):
+def _load_nwp_grid(fname):
     """load NWP grid"""
     with nc.Dataset(fname) as dset:
-        if product in [ 'arome', 'meps' ]:
-            # projection string for the spatial reference system used
-            projection_string = dset['projection_lambert'].proj4  
-            # coordinates arrays
-            # these are masked arrays, make sure to grab the data field
-            xvec = dset['x'][:].data # 1D
-            yvec = dset['y'][:].data # 1D
-        elif product == 'mywavewam':
-            projection_string = dset['projection_3'].proj4  
-            xvec = dset['rlon'][:].data
-            yvec = dset['rlat'][:].data
         # data arrays, may be masked arrays
         # usually 2D (y,x) or 3D (time,y,x)
         # don't bother with actual data arrays here.
         # we just loading the grid and some metadata
         # altitude = dset['altitude'][:].data # 2D
-        # longitude = dset['longitude'][:].data # 2D
-        # latitude = dset['latitude'][:].data # 2D
-    return xvec, yvec, projection_string
+        longitude = dset['longitude'][:].data # 2D
+        latitude = dset['latitude'][:].data # 2D
+    return longitude, latitude
 
 
 def _coords_to_index(coord, xc):
@@ -133,40 +108,40 @@ def get_nwp_at_latlon_ts(fname_nwp,
     @todo: arome/meps
     """
     
+    # use a kdtree to find the nearest neighbours to the requested lon,lat
+    # on the lat,lon grid included in the nwp product
+    # cf. https://stackoverflow.com/a/40044540
+
     # load coordinates available in NWP grid
-    xvec, yvec, projection_string = _load_nwp_grid(fname_nwp, 
-                                                   product=product)
-    
-    # reproject requested coordinates (WGS84/EPSG4326) into nwp grid
-    xcoords_req = lon_req
-    ycoords_req = lat_req
-    xcoords, ycoords = \
-        _reproject_points(xcoords_req, ycoords_req, \
-                          "epsg:4326", \
-                          projection_string)
-    
-    # compute corresponding index in NWP grid
-    xidx = [ _coords_to_index(xcoords[kk], xvec) for kk in range(len(xcoords)) ]
-    yidx = [ _coords_to_index(ycoords[kk], yvec) for kk in range(len(ycoords)) ]
-    
+    lon_grid, lat_grid = _load_nwp_grid(fname_nwp)
+
+    grid = pyresample.geometry.GridDefinition(lons=lon_grid, lats=lat_grid)
+    swath = pyresample.geometry.SwathDefinition(lons=lon_req, lats=lat_req)
+
+    # nearest neighbours (wrt great circle distance) in the grid
+    _, _, index_array, distance_array = \
+        pyresample.kd_tree.get_neighbour_info(source_geo_def=grid,
+                                              target_geo_def=swath,
+                                              radius_of_influence=50000,
+                                              neighbours=1)
+
+    # unflatten the indices
+    index_array_2d = np.unravel_index(index_array, grid.shape)
+    # index_array_lon = index_array_2d[0]
+    # index_array_lat = index_array_2d[1]
+
     # load nwp timestamp and find time index
     with nc.Dataset(fname_nwp) as dset:
         ts = pd.to_datetime(dset['time'][:], unit='s', origin='unix', utc=True)
         tidx = np.argwhere(ts==pd.to_datetime(ts_req))[0][0]
-       
+
     # recover NWP data
     with nc.Dataset(fname_nwp) as dset:
         # coords for sanity checking
-        lon_out = []
-        lat_out = []
+        lon_out = np.ravel(dset['longitude'][:])[index_array]
+        lat_out = np.ravel(dset['latitude'][:])[index_array]
         # nwp variables
-        hs_sea = []
-        for kk in range(len(xidx)):
-            # coords
-            lon_out.append(dset['lon'][yidx[kk],xidx[kk]].data)
-            lat_out.append(dset['lat'][yidx[kk],xidx[kk]].data)
-            # nwp
-            hs_sea.append(dset['hs_sea'][tidx,yidx[kk],xidx[kk]].data)
+        hs_sea = np.ravel(dset['hs_sea'][tidx,:])[index_array]
 
     # make dataframe
     nwp_dict = { 'ts': pd.to_datetime(ts_req, utc=True), 
