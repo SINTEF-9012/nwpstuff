@@ -130,12 +130,21 @@ def get_nwp_at_latlon_ts(fname_nwp,
         lon_out = np.ravel(dset['longitude'][:])[index_array]
         lat_out = np.ravel(dset['latitude'][:])[index_array]
         # nwp variables
-        hs_sea = np.ravel(dset['hs_sea'][tidx,:])[index_array]
+        # ff - wind speed
+        # dd - wind direction
+        # hs - total wave height
+        # thq - total mean wave direction
+        # tp = -total peak period
+        ff = np.ravel(dset['ff'][tidx,:])[index_array]
+        dd = np.ravel(dset['dd'][tidx,:])[index_array]
+        hs = np.ravel(dset['hs'][tidx,:])[index_array]
+        thq = np.ravel(dset['thq'][tidx,:])[index_array]
+        tp = np.ravel(dset['tp'][tidx,:])[index_array]
 
     # make dataframe
     nwp_dict = { 'ts': pd.to_datetime(ts_req, utc=True), 
                  'lon_out': lon_out, 'lat_out': lat_out,
-                 'hs_sea': hs_sea }
+                 'ff': ff, 'dd': dd, 'hs': hs, 'thq': thq, 'tp': tp }
 
     if as_dataframe == True:
         out = pd.DataFrame(data=nwp_dict)
