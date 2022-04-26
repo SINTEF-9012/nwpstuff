@@ -11,7 +11,7 @@ import argparse
 import os
 
 
-def download_nwp(date, basedir, force=False):
+def download_nwp(date, basedir, force=False, quiet=False):
     """
     date is YYYY-MM-DD
     basedir is the path where the NWP output will be stored
@@ -63,11 +63,17 @@ def download_nwp(date, basedir, force=False):
         print("[!] %s Exists." % fname)
         if force == True:
             print('[!] Forcing Download.')
-            subprocess.run(['wget', '-O', fname, url])
+            if quiet == True:
+                subprocess.run(['wget', '--quiet', '-O', fname, url])
+            else:
+                subprocess.run(['wget', '-O', fname, url])
         else:
             print('[!] Skipping Download.')
     else:
-        subprocess.run(['wget', '-O', fname, url])
+        if quiet == True:
+            subprocess.run(['wget', '--quiet', '-O', fname, url])
+        else:
+            subprocess.run(['wget', '-O', fname, url])
 
     return fname
 

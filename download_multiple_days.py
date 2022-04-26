@@ -17,6 +17,7 @@ parser.add_argument('-e', '--end', default='2019-01-02',
 parser.add_argument('-b', '--basedir', default='/tmp/vesselai',
                     help='Base Directory for Files')
 parser.add_argument('--force', action='store_true', default=False)
+parser.add_argument('-q', '--quiet', action='store_true', default=False)
 args = parser.parse_args()
 
 dates = pd.date_range(start=args.start, end=args.end)
@@ -25,4 +26,4 @@ dates = pd.date_range(start=args.start, end=args.end)
 for date in dates:
     date = date.strftime("%Y-%m-%d")
     print("[*] Downloading NWP Product for %s." % date)
-    _ = nwpstuff.download_nwp(date, args.basedir, args.force)
+    _ = nwpstuff.download_nwp(date, args.basedir, args.force, args.quiet)
