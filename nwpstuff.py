@@ -128,7 +128,13 @@ def get_nwp_at_latlon_ts(fname_nwp,
     # load nwp timestamp and find time index
     with nc.Dataset(fname_nwp) as dset:
         ts = pd.to_datetime(dset['time'][:], unit='s', origin='unix', utc=True)
-        tidx = np.argwhere(ts==pd.to_datetime(ts_req))[0][0]
+        # if the timestamp does not exist (e.g., buggy NWP data), find the 
+        # nearest timestamp available
+        try:
+            tidx = np.argwhere(ts==pd.to_datetime(ts_req))[0][0]
+        except IndexError:
+            print('[!] Requested Timestamp Not Found. Using Nearest Available.')
+            tidx = np.argmin(np.abs(ts-pd.to_datetime(ts_req)))
 
     # recover NWP data
     with nc.Dataset(fname_nwp) as dset:
