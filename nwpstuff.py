@@ -21,7 +21,7 @@ def download_nwp(date, basedir, force=False, quiet=False):
     we use MyWaveWam800m Skagerrak Hourly Aggregation
     then click `NetcdfSubset`
     """
-    date = date.split('-')
+    date = date.split("-")
     year = int(date[0])
     month = int(date[1])
     day = int(date[2])
@@ -57,23 +57,22 @@ def download_nwp(date, basedir, force=False, quiet=False):
     url += "time_end=%04d-%02d-%02dT23:00:00Z&" % (year, month, day)
     url += "timeStride=1&"
     url += "addLatLon=true"
-    fname = "%s/mywavewam800s_be_%04d-%02d-%02d.nc" % (basedir, 
-                                                       year, month, day)
+    fname = "%s/mywavewam800s_be_%04d-%02d-%02d.nc" % (basedir, year, month, day)
     if os.path.exists(fname):
         print("[!] %s Exists." % fname)
         if force == True:
-            print('[!] Forcing Download.')
+            print("[!] Forcing Download.")
             if quiet == True:
-                subprocess.run(['wget', '--quiet', '-O', fname, url])
+                subprocess.run(["wget", "--quiet", "-O", fname, url])
             else:
-                subprocess.run(['wget', '-O', fname, url])
+                subprocess.run(["wget", "-O", fname, url])
         else:
-            print('[!] Skipping Download.')
+            print("[!] Skipping Download.")
     else:
         if quiet == True:
-            subprocess.run(['wget', '--quiet', '-O', fname, url])
+            subprocess.run(["wget", "--quiet", "-O", fname, url])
         else:
-            subprocess.run(['wget', '-O', fname, url])
+            subprocess.run(["wget", "-O", fname, url])
 
     return fname
 
@@ -86,23 +85,25 @@ def _load_nwp_grid(fname):
         # don't bother with actual data arrays here.
         # we just loading the grid and some metadata
         # altitude = dset['altitude'][:].data # 2D
-        longitude = dset['longitude'][:].data # 2D
-        latitude = dset['latitude'][:].data # 2D
+        longitude = dset["longitude"][:].data  # 2D
+        latitude = dset["latitude"][:].data  # 2D
     return longitude, latitude
 
 
-def get_nwp_at_latlon_ts(fname_nwp, 
-                         lon_req=[10.5,10.6],
-                         lat_req=[59.5,59.6],
-                         ts_req='2019-01-01T000000Z',
-                         as_dataframe=True):
+def get_nwp_at_latlon_ts(
+    fname_nwp,
+    lon_req=[10.5, 10.6],
+    lat_req=[59.5, 59.6],
+    ts_req="2019-01-01T000000Z",
+    as_dataframe=True,
+):
     """
     fname_nwp is the path to the NWP product
     lon_req, lat_req are in WGS84 (EPSG:4326)
     ts is ISO 8601 (e.g., 2019-09-06T134500Z is valid)
     @todo: arome/meps
     """
-    
+
     # use a kdtree to find the nearest neighbours to the requested lon,lat
     # on the lat,lon grid included in the nwp product
     # cf. https://stackoverflow.com/a/40044540
@@ -114,11 +115,12 @@ def get_nwp_at_latlon_ts(fname_nwp,
     swath = pyresample.geometry.SwathDefinition(lons=lon_req, lats=lat_req)
 
     # nearest neighbours (wrt great circle distance) in the grid
-    _, _, index_array, distance_array = \
-        pyresample.kd_tree.get_neighbour_info(source_geo_def=grid,
-                                              target_geo_def=swath,
-                                              radius_of_influence=50000,
-                                              neighbours=1)
+    _, _, index_array, distance_array = pyresample.kd_tree.get_neighbour_info(
+        source_geo_def=grid,
+        target_geo_def=swath,
+        radius_of_influence=50000,
+        neighbours=1,
+    )
 
     # unflatten the indices
     index_array_2d = np.unravel_index(index_array, grid.shape)
@@ -127,36 +129,43 @@ def get_nwp_at_latlon_ts(fname_nwp,
 
     # load nwp timestamp and find time index
     with nc.Dataset(fname_nwp) as dset:
-        ts = pd.to_datetime(dset['time'][:], unit='s', origin='unix', utc=True)
-        # if the timestamp does not exist (e.g., buggy NWP data), find the 
+        ts = pd.to_datetime(dset["time"][:], unit="s", origin="unix", utc=True)
+        # if the timestamp does not exist (e.g., buggy NWP data), find the
         # nearest timestamp available
         try:
-            tidx = np.argwhere(ts==pd.to_datetime(ts_req))[0][0]
+            tidx = np.argwhere(ts == pd.to_datetime(ts_req))[0][0]
         except IndexError:
-            print('[!] Requested Timestamp Not Found. Using Nearest Available.')
-            tidx = np.argmin(np.abs(ts-pd.to_datetime(ts_req)))
+            print("[!] Requested Timestamp Not Found. Using Nearest Available.")
+            tidx = np.argmin(np.abs(ts - pd.to_datetime(ts_req)))
 
     # recover NWP data
     with nc.Dataset(fname_nwp) as dset:
         # coords for sanity checking
-        lon_out = np.ravel(dset['longitude'][:])[index_array]
-        lat_out = np.ravel(dset['latitude'][:])[index_array]
+        lon_out = np.ravel(dset["longitude"][:])[index_array]
+        lat_out = np.ravel(dset["latitude"][:])[index_array]
         # nwp variables
         # ff - wind speed
         # dd - wind direction
         # hs - total wave height
         # thq - total mean wave direction
         # tp = -total peak period
-        ff = np.ravel(dset['ff'][tidx,:])[index_array]
-        dd = np.ravel(dset['dd'][tidx,:])[index_array]
-        hs = np.ravel(dset['hs'][tidx,:])[index_array]
-        thq = np.ravel(dset['thq'][tidx,:])[index_array]
-        tp = np.ravel(dset['tp'][tidx,:])[index_array]
+        ff = np.ravel(dset["ff"][tidx, :])[index_array]
+        dd = np.ravel(dset["dd"][tidx, :])[index_array]
+        hs = np.ravel(dset["hs"][tidx, :])[index_array]
+        thq = np.ravel(dset["thq"][tidx, :])[index_array]
+        tp = np.ravel(dset["tp"][tidx, :])[index_array]
 
     # make dataframe
-    nwp_dict = { 'ts': pd.to_datetime(ts_req, utc=True), 
-                 'lon_out': lon_out, 'lat_out': lat_out,
-                 'ff': ff, 'dd': dd, 'hs': hs, 'thq': thq, 'tp': tp }
+    nwp_dict = {
+        "ts": pd.to_datetime(ts_req, utc=True),
+        "lon_out": lon_out,
+        "lat_out": lat_out,
+        "ff": ff,
+        "dd": dd,
+        "hs": hs,
+        "thq": thq,
+        "tp": tp,
+    }
 
     if as_dataframe == True:
         out = pd.DataFrame(data=nwp_dict)
@@ -167,13 +176,17 @@ def get_nwp_at_latlon_ts(fname_nwp,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--date', default='2019-01-01', 
-                        help='Date for NWP Data')
-    parser.add_argument('-b', '--basedir', default='/tmp',
-                        help='Base Directory for Files')
-    parser.add_argument('-c', '--coords', default='10.5,59.5',
-                        help='Lon,Lat of Target Coordinates (EPSG4326/WSG84')
-    parser.add_argument('--force', action='store_true', default=False)
+    parser.add_argument("-d", "--date", default="2019-01-01", help="Date for NWP Data")
+    parser.add_argument(
+        "-b", "--basedir", default="/tmp", help="Base Directory for Files"
+    )
+    parser.add_argument(
+        "-c",
+        "--coords",
+        default="10.5,59.5",
+        help="Lon,Lat of Target Coordinates (EPSG4326/WSG84",
+    )
+    parser.add_argument("--force", action="store_true", default=False)
     args = parser.parse_args()
     print(args)
 
@@ -181,13 +194,15 @@ if __name__ == "__main__":
     fname_nwp = download_nwp(args.date, args.basedir, args.force)
 
     print("[*] Extracting NWP at Target Coordinates")
-    lon_req = float(args.coords.split(',')[0])
-    lat_req = float(args.coords.split(',')[1])
-    df = get_nwp_at_latlon_ts(fname_nwp, 
-                              lon_req=[lon_req],
-                              lat_req=[lat_req],
-                              ts_req="%sT000000Z" % args.date,
-                              as_dataframe=True)
+    lon_req = float(args.coords.split(",")[0])
+    lat_req = float(args.coords.split(",")[1])
+    df = get_nwp_at_latlon_ts(
+        fname_nwp,
+        lon_req=[lon_req],
+        lat_req=[lat_req],
+        ts_req="%sT000000Z" % args.date,
+        as_dataframe=True,
+    )
 
     print("[*] Output Dataframe Follows")
     print(df)
